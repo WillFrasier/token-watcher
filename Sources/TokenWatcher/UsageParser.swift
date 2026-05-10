@@ -51,13 +51,16 @@ enum UsageParser {
         dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         let dateFormatterBasic = ISO8601DateFormatter()
 
+        // Last-wins: streaming writes the same msgId:requestId multiple times with
+        // growing token counts. Map key → index so later snapshots overwrite earlier ones.
+        var dedupIndex: [String: Int] = [:]
         var entries: [UsageEntry] = []
-        var seenIds = Set<String>()
 
         for line in content.split(separator: "\n", omittingEmptySubsequences: true) {
             guard let data = String(line).data(using: .utf8),
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   json["type"] as? String == "assistant",
+                  json["isApiErrorMessage"] as? Bool != true,
                   let message = json["message"] as? [String: Any],
                   let usage = message["usage"] as? [String: Any]
             else { continue }
@@ -71,15 +74,13 @@ enum UsageParser {
             let msgId = message["id"] as? String ?? ""
             let reqId = json["requestId"] as? String ?? ""
             let dedupKey = "\(msgId):\(reqId)"
-            guard !dedupKey.isEmpty, !seenIds.contains(dedupKey) else { continue }
-            seenIds.insert(dedupKey)
 
             let tsStr = json["timestamp"] as? String ?? ""
             let timestamp = dateFormatter.date(from: tsStr)
                 ?? dateFormatterBasic.date(from: tsStr)
                 ?? Date.distantPast
 
-            entries.append(UsageEntry(
+            let entry = UsageEntry(
                 timestamp: timestamp,
                 model: message["model"] as? String ?? "unknown",
                 inputTokens: inputTokens,
@@ -89,8 +90,16 @@ enum UsageParser {
                 sessionId: json["sessionId"] as? String ?? "",
                 isSidechain: json["isSidechain"] as? Bool ?? false,
                 cwd: json["cwd"] as? String,
-                gitBranch: json["gitBranch"] as? String
-            ))
+                gitBranch: json["gitBranch"] as? String,
+                speed: usage["speed"] as? String ?? "standard"
+            )
+
+            if !dedupKey.isEmpty, let existing = dedupIndex[dedupKey] {
+                entries[existing] = entry
+            } else {
+                if !dedupKey.isEmpty { dedupIndex[dedupKey] = entries.count }
+                entries.append(entry)
+            }
         }
         return entries
     }

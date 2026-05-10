@@ -35,6 +35,7 @@ struct UsageEntry: Sendable {
     let isSidechain: Bool
     let cwd: String?
     let gitBranch: String?
+    let speed: String  // "standard" | "fast" — affects cost when fast mode active
 }
 
 struct ProjectUsage: Identifiable, Sendable {
