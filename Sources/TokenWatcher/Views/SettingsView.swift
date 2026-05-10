@@ -1,4 +1,5 @@
 import SwiftUI
+import TokenWatcherCore
 
 struct SettingsView: View {
     let onBack: () -> Void
@@ -22,7 +23,7 @@ struct SettingsView: View {
         }
         .frame(width: 340, height: 580)
         .background(Color(nsColor: .windowBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .clipShape(RoundedRectangle(cornerRadius: panelCornerRadius))
     }
 
     // MARK: - Header

@@ -9,6 +9,8 @@ extension View {
     }
 }
 
+let panelCornerRadius: CGFloat = 12
+
 let projectPalette: [Color] = [
     Color(red: 0.20, green: 0.85, blue: 0.50),  // emerald
     Color(red: 0.38, green: 0.62, blue: 1.00),  // blue
