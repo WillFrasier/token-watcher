@@ -110,7 +110,7 @@ struct ProjectDetailView: View {
                 metaCell(
                     icon: "person.2",
                     label: "Sub-agents",
-                    value: project.subAgentCount > 0 ? "\(project.subAgentCount)" : "—"
+                    value: stats.subAgentCount > 0 ? "\(stats.subAgentCount)" : "—"
                 )
                 Divider().frame(height: 28)
                 metaCell(
@@ -196,9 +196,8 @@ struct ProjectDetailView: View {
                 mixLegend(color: .purple, label: "Cache↩",  tokens: stats.usage.cacheReadTokens)
             }
 
-            if stats.cacheHitRate > 0 {
-                let savings = stats.usage.costUSD * stats.cacheHitRate * 0.85
-                Text("Cache saves ~\(savings.formattedCost) vs no caching")
+            if stats.cacheSavingsUSD > 0 {
+                Text("Cache saves ~\(stats.cacheSavingsUSD.formattedCost) vs no caching")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }
@@ -322,16 +321,19 @@ struct ProjectDetailView: View {
         let entries = UsageStore.shared.entries(for: project.id).filter { $0.timestamp >= cutoff }
 
         guard !entries.isEmpty else {
-            stats = DetailStats(usage: .init(), models: [], branches: [], cacheHitRate: 0)
+            stats = DetailStats(usage: .init(), models: [], branches: [], cacheHitRate: 0, subAgentCount: 0, cacheSavingsUSD: 0)
             return
         }
 
         var totalUsage = TokenUsage()
         var modelMap: [String: TokenUsage] = [:]
         var branchMap: [String: TokenUsage] = [:]
+        var subAgentCount = 0
+        var cacheSavingsUSD = 0.0
 
         for entry in entries {
-            let cost = pricing(for: entry.model).cost(
+            let p = pricing(for: entry.model)
+            let cost = p.cost(
                 input: entry.inputTokens, output: entry.outputTokens,
                 cacheCreate: entry.cacheCreationTokens, cacheRead: entry.cacheReadTokens
             )
@@ -345,6 +347,10 @@ struct ProjectDetailView: View {
             totalUsage += eu
             modelMap[entry.model, default: .init()] += eu
             branchMap[entry.gitBranch ?? "unknown", default: .init()] += eu
+            if entry.isSidechain { subAgentCount += 1 }
+            // Savings = what cache reads would have cost at input rate minus what they actually cost
+            let m = 1_000_000.0
+            cacheSavingsUSD += Double(entry.cacheReadTokens) / m * (p.inputPer1M - p.cacheReadPer1M)
         }
 
         let models = modelMap.map { (model, usage) in
@@ -364,7 +370,11 @@ struct ProjectDetailView: View {
         let billable = totalUsage.inputTokens + totalUsage.cacheReadTokens
         let cacheHitRate = billable > 0 ? Double(totalUsage.cacheReadTokens) / Double(billable) : 0
 
-        stats = DetailStats(usage: totalUsage, models: models, branches: branches, cacheHitRate: cacheHitRate)
+        stats = DetailStats(
+            usage: totalUsage, models: models, branches: branches,
+            cacheHitRate: cacheHitRate, subAgentCount: subAgentCount,
+            cacheSavingsUSD: cacheSavingsUSD
+        )
     }
 
     private func normalizeModel(_ model: String) -> String {
@@ -447,6 +457,8 @@ private struct DetailStats {
     let models: [ModelStat]
     let branches: [BranchStat]
     let cacheHitRate: Double
+    let subAgentCount: Int
+    let cacheSavingsUSD: Double
 }
 
 // MARK: - Activity bar chart
