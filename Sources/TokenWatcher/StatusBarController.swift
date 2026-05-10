@@ -141,6 +141,8 @@ final class StatusBarController {
         let contentView = MainView()
         let hosting = NSHostingView(rootView: contentView)
         hosting.frame = NSRect(x: 0, y: 0, width: panelWidth, height: panelHeight)
+        hosting.wantsLayer = true
+        hosting.layer?.backgroundColor = .clear
 
         let p = NSPanel(
             contentRect: NSRect(x: 0, y: 0, width: panelWidth, height: panelHeight),
