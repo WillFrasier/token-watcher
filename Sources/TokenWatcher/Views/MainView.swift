@@ -1,4 +1,5 @@
 import SwiftUI
+import TokenWatcherCore
 
 struct MainView: View {
     @ObservedObject private var store = UsageStore.shared
@@ -32,15 +33,8 @@ struct MainView: View {
             footerBar
         }
         .frame(width: 340)
-        .background {
-            RoundedRectangle(cornerRadius: 12)
-                .fill(.ultraThinMaterial)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 12)
-                        .strokeBorder(.white.opacity(0.12), lineWidth: 0.5)
-                }
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .background(Color(NSColor.windowBackgroundColor), in: RoundedRectangle(cornerRadius: panelCornerRadius))
+        .clipShape(RoundedRectangle(cornerRadius: panelCornerRadius))
     }
 
     // MARK: - Header (2-row: title row + time picker row)
@@ -104,16 +98,6 @@ struct MainView: View {
             .frame(height: 80)
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
-            .background {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(.black.opacity(0.06))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 8)
-                            .strokeBorder(.white.opacity(0.10), lineWidth: 0.5)
-                    }
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
     }
 
     // MARK: - Summary
@@ -135,16 +119,6 @@ struct MainView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .background {
-            RoundedRectangle(cornerRadius: 8)
-                .fill(.black.opacity(0.06))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 8)
-                        .strokeBorder(.white.opacity(0.10), lineWidth: 0.5)
-                }
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
     }
 
     private var summaryDivider: some View {

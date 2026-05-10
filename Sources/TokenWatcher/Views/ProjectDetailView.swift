@@ -1,4 +1,5 @@
 import SwiftUI
+import TokenWatcherCore
 
 @MainActor
 struct ProjectDetailView: View {
@@ -31,7 +32,7 @@ struct ProjectDetailView: View {
         }
         .frame(width: 340, height: 580)
         .background(Color(nsColor: .windowBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .clipShape(RoundedRectangle(cornerRadius: panelCornerRadius))
         .task { computeStats() }
     }
 

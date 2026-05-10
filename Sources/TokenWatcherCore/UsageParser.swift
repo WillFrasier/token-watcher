@@ -1,10 +1,10 @@
 import Foundation
 
-enum UsageParser {
-    static let projectsURL: URL = FileManager.default.homeDirectoryForCurrentUser
+public enum UsageParser {
+    public static let projectsURL: URL = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent(".claude/projects")
 
-    static func parseAll() async throws -> [String: [UsageEntry]] {
+    public static func parseAll() async throws -> [String: [UsageEntry]] {
         let fm = FileManager.default
         guard fm.fileExists(atPath: projectsURL.path) else { return [:] }
 
@@ -44,9 +44,12 @@ enum UsageParser {
         return entries
     }
 
-    static func parseJSONL(at url: URL) -> [UsageEntry] {
+    public static func parseJSONL(at url: URL) -> [UsageEntry] {
         guard let content = try? String(contentsOf: url, encoding: .utf8) else { return [] }
+        return parseLines(content)
+    }
 
+    public static func parseLines(_ content: String) -> [UsageEntry] {
         let dateFormatter = ISO8601DateFormatter()
         dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         let dateFormatterBasic = ISO8601DateFormatter()

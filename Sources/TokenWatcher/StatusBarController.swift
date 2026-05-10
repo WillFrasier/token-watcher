@@ -1,6 +1,7 @@
 import Cocoa
 import SwiftUI
 import Combine
+import TokenWatcherCore
 
 @MainActor
 final class StatusBarController {
@@ -8,6 +9,7 @@ final class StatusBarController {
     private var panel: NSPanel?
     private var cancellables = Set<AnyCancellable>()
     private var eventMonitor: Any?
+    private var keyMonitor: Any?
 
     private let panelWidth: CGFloat = 340
     private let panelHeight: CGFloat = 580
@@ -144,7 +146,7 @@ final class StatusBarController {
         hosting.wantsLayer = true
         hosting.layer?.backgroundColor = .clear
 
-        let p = NSPanel(
+        let p = KeyablePanel(
             contentRect: NSRect(x: 0, y: 0, width: panelWidth, height: panelHeight),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
@@ -186,6 +188,10 @@ final class StatusBarController {
         eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
             self?.closePanel()
         }
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            if event.keyCode == 53 { self?.closePanel(); return nil } // Escape
+            return event
+        }
     }
 
     private func closePanel() {
@@ -194,8 +200,16 @@ final class StatusBarController {
             NSEvent.removeMonitor(monitor)
             eventMonitor = nil
         }
+        if let monitor = keyMonitor {
+            NSEvent.removeMonitor(monitor)
+            keyMonitor = nil
+        }
     }
 
+}
+
+private final class KeyablePanel: NSPanel {
+    override var canBecomeKey: Bool { true }
 }
 
 private extension Sequence {

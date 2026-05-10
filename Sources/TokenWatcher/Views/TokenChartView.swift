@@ -1,4 +1,5 @@
 import SwiftUI
+import TokenWatcherCore
 
 struct TokenChartView: View {
     struct ProjectSeries {

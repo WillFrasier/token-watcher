@@ -5,9 +5,19 @@ let package = Package(
     name: "TokenWatcher",
     platforms: [.macOS(.v13)],
     targets: [
+        .target(
+            name: "TokenWatcherCore",
+            path: "Sources/TokenWatcherCore"
+        ),
         .executableTarget(
             name: "TokenWatcher",
+            dependencies: ["TokenWatcherCore"],
             path: "Sources/TokenWatcher"
-        )
+        ),
+        .testTarget(
+            name: "TokenWatcherTests",
+            dependencies: ["TokenWatcherCore"],
+            path: "Tests/TokenWatcherTests"
+        ),
     ]
 )

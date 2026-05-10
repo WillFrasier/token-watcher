@@ -1,5 +1,6 @@
 import Foundation
 import UserNotifications
+import TokenWatcherCore
 
 final class AlertsManager: NSObject {
     static let shared = AlertsManager()
