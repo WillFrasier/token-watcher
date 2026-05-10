@@ -1,5 +1,6 @@
 import SwiftUI
 
+@MainActor
 struct ProjectDetailView: View {
     let project: ProjectUsage
     let timeWindow: TimeWindow

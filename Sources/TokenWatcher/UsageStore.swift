@@ -34,7 +34,9 @@ final class UsageStore: ObservableObject {
             withTimeInterval: TimeInterval(settings.updateIntervalSeconds),
             repeats: true
         ) { [weak self] _ in
-            Task { await self?.refresh() }
+            Task { @MainActor [weak self] in
+                await self?.refresh()
+            }
         }
     }
 
