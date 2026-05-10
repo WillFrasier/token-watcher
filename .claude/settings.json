@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc --noEmit *)",
+      "Bash(pkill *)",
+      "Bash(open *)",
+      "Bash(bash scripts/*)",
+      "Bash(swift build *)"
+    ]
+  }
+}
