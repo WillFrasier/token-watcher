@@ -33,17 +33,12 @@ struct MainView: View {
         }
         .frame(width: 340)
         .background {
-            if #available(macOS 26.0, *) {
-                Color.clear
-                    .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 12))
-            } else {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(.ultraThinMaterial)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 12)
-                            .strokeBorder(.white.opacity(0.12), lineWidth: 0.5)
-                    }
-            }
+            RoundedRectangle(cornerRadius: 12)
+                .fill(.ultraThinMaterial)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 12)
+                        .strokeBorder(.white.opacity(0.12), lineWidth: 0.5)
+                }
         }
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
