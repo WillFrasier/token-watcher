@@ -2,7 +2,7 @@
 
 **TokenWatcher** is a small **macOS menu bar app** that summarizes **Claude Code token usage** from your local project history: totals by window (today / week / month), per-project breakdown, simple charts, optional alerts, and rough **USD estimates** from bundled pricing defaults (editable in Settings).
 
-![CI](https://github.com/YOUR_GITHUB_USERNAME/YOUR_REPO_NAME/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/WillFrasier/token-watcher/actions/workflows/ci.yml/badge.svg)
 
 > **Disclaimer:** TokenWatcher is an independent open-source tool. It is **not affiliated with, endorsed by, or supported by** Anthropic or Claude. Claude and related marks belong to their respective owners.
 
@@ -56,8 +56,8 @@ If you audit the code, start with `UsageParser.swift` (paths + parsing) and `Usa
 ## Install & run (from source)
 
 ```bash
-git clone https://github.com/YOUR_GITHUB_USERNAME/YOUR_REPO_NAME.git
-cd YOUR_REPO_NAME   # or the folder name you choose when publishing
+git clone https://github.com/WillFrasier/token-watcher.git
+cd token-watcher   # or the directory name you cloned into
 
 swift build -c release
 open .build/release/TokenWatcher   # or: ./.build/release/TokenWatcher
