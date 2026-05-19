@@ -33,11 +33,12 @@ final class FileCacheTests: XCTestCase {
 
         let second = await UsageParser.loadFile(at: fileURL, cache: cache)
         XCTAssertEqual(second.count, 2)
+        guard second.count >= 2 else { return }
         XCTAssertEqual(second[1].inputTokens, 200)
 
         // Verify cached offset advanced to end of file
         let entry = await cache.entry(for: fileURL)
-        let fileSize = (try? fileURL.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0
+        let fileSize = ((try? FileManager.default.attributesOfItem(atPath: fileURL.path))?[.size] as? Int) ?? 0
         XCTAssertEqual(entry?.byteOffset, fileSize)
     }
 

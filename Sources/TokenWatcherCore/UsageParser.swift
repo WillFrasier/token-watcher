@@ -50,7 +50,9 @@ public enum UsageParser {
     // Cache-aware file loader. Returns cached entries for unchanged files,
     // reads only new bytes for appended files, full-parses new/replaced files.
     static func loadFile(at url: URL, cache: FileCache = FileCache.shared) async -> [UsageEntry] {
-        let fileSize = (try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0
+        // FileManager avoids the URL resource-value cache, which can return stale file sizes
+        // within a single process lifetime after the file has been written to.
+        let fileSize = ((try? FileManager.default.attributesOfItem(atPath: url.path))?[.size] as? Int) ?? 0
         let cached = await cache.entry(for: url)
 
         if let cached {
