@@ -13,17 +13,20 @@ public struct FileCacheEntry: Codable {
 }
 
 public actor FileCache {
-    public static let shared = FileCache()
-
-    private var store: [String: FileCacheEntry] = [:]
-    private let cacheURL: URL
-
-    private init() {
+    public static let shared: FileCache = {
         let appSupport = FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("TokenWatcher", isDirectory: true)
         try? FileManager.default.createDirectory(at: appSupport, withIntermediateDirectories: true)
-        cacheURL = appSupport.appendingPathComponent("fileCache.json")
+        return FileCache(cacheURL: appSupport.appendingPathComponent("fileCache.json"))
+    }()
+
+    private var store: [String: FileCacheEntry] = [:]
+    let cacheURL: URL
+
+    // Internal init — allows isolated instances in tests
+    init(cacheURL: URL) {
+        self.cacheURL = cacheURL
         if let data = try? Data(contentsOf: cacheURL),
            let loaded = try? JSONDecoder().decode([String: FileCacheEntry].self, from: data) {
             store = loaded

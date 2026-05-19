@@ -35,23 +35,23 @@ public enum UsageParser {
         return result
     }
 
-    public static func parseProject(at dir: URL) async -> [UsageEntry] {
+    public static func parseProject(at dir: URL, cache: FileCache = FileCache.shared) async -> [UsageEntry] {
         let fm = FileManager.default
         let files = (try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.fileSizeKey]))?
             .filter { $0.pathExtension == "jsonl" } ?? []
 
         var allEntries: [UsageEntry] = []
         for file in files {
-            allEntries.append(contentsOf: await loadFile(at: file))
+            allEntries.append(contentsOf: await loadFile(at: file, cache: cache))
         }
         return allEntries
     }
 
     // Cache-aware file loader. Returns cached entries for unchanged files,
     // reads only new bytes for appended files, full-parses new/replaced files.
-    static func loadFile(at url: URL) async -> [UsageEntry] {
+    static func loadFile(at url: URL, cache: FileCache = FileCache.shared) async -> [UsageEntry] {
         let fileSize = (try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0
-        let cached = await FileCache.shared.entry(for: url)
+        let cached = await cache.entry(for: url)
 
         if let cached {
             if fileSize == cached.byteOffset {
@@ -62,7 +62,7 @@ public enum UsageParser {
                     var entries = cached.entries
                     var dedup = cached.dedupIndex
                     merge(into: &entries, dedupIndex: &dedup, new: newEntries)
-                    await FileCache.shared.set(
+                    await cache.set(
                         FileCacheEntry(byteOffset: fileSize, entries: entries, dedupIndex: dedup),
                         for: url
                     )
@@ -74,7 +74,7 @@ public enum UsageParser {
 
         guard let content = try? String(contentsOf: url, encoding: .utf8) else { return [] }
         let (entries, dedup) = parseLinesDetailed(content)
-        await FileCache.shared.set(
+        await cache.set(
             FileCacheEntry(byteOffset: fileSize, entries: entries, dedupIndex: dedup),
             for: url
         )
