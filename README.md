@@ -69,6 +69,31 @@ To open in **Xcode** (optional): generate or maintain an Xcode project if you ad
 
 ---
 
+## Releasing a new version
+
+Releases are automated via GitHub Actions. When a version tag is pushed, CI runs tests, builds a `.app` bundle, and attaches a zip to a GitHub Release automatically.
+
+```bash
+# 1. Merge all changes to main and pull
+git checkout main && git pull
+
+# 2. Tag and push — this triggers the release workflow
+git tag v1.2.3
+git push origin v1.2.3
+```
+
+The release appears at **github.com/WillFrasier/token-watcher/releases** with a `TokenWatcher.zip` download and install instructions.
+
+**Version naming:** use [semver](https://semver.org/) — `vMAJOR.MINOR.PATCH`. Bump PATCH for bug fixes, MINOR for new features, MAJOR for breaking changes.
+
+**Gatekeeper note:** releases are unsigned. Users will need to right-click → Open on first launch, or run:
+```bash
+xattr -dr com.apple.quarantine TokenWatcher.app
+```
+For signed + notarized builds, an Apple Developer account ($99/year) and Developer ID certificate are required.
+
+---
+
 ## Maintenance expectations
 
 This project is maintained **on a best-effort basis**. Issues and PRs are welcome, but there is **no SLA** for reviews or releases. If you need a guarantee of ongoing support, treat this as **“use at your own risk”** and consider forking.
@@ -79,7 +104,7 @@ See **[CONTRIBUTING.md](CONTRIBUTING.md)** for scope, what kinds of changes merg
 
 ## Roadmap ideas (help welcome)
 
-- **Prebuilt releases:** signed `.zip` / `.dmg` attached to GitHub Releases.
+- **Prebuilt releases:** unsigned `.zip` attached to GitHub Releases (done); signed `.dmg` requires Apple Developer ID.
 - **Homebrew cask:** formula pointing at a stable release URL.
 - **Sparkle** or similar for auto-updates on direct downloads.
 - **Tests** for `UsageParser` edge cases (malformed lines, empty dirs, large files).
