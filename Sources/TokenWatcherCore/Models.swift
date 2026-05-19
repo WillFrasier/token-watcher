@@ -38,7 +38,7 @@ public struct TokenUsage: Equatable, Sendable {
     }
 }
 
-public struct UsageEntry: Sendable {
+public struct UsageEntry: Sendable, Codable {
     public let timestamp: Date
     public let model: String
     public let inputTokens: Int
@@ -50,6 +50,7 @@ public struct UsageEntry: Sendable {
     public let cwd: String?
     public let gitBranch: String?
     public let speed: String
+    public let dedupKey: String
 
     public init(
         timestamp: Date,
@@ -62,7 +63,8 @@ public struct UsageEntry: Sendable {
         isSidechain: Bool,
         cwd: String?,
         gitBranch: String?,
-        speed: String
+        speed: String,
+        dedupKey: String = ""
     ) {
         self.timestamp = timestamp
         self.model = model
@@ -75,6 +77,7 @@ public struct UsageEntry: Sendable {
         self.cwd = cwd
         self.gitBranch = gitBranch
         self.speed = speed
+        self.dedupKey = dedupKey
     }
 }
 

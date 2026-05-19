@@ -12,7 +12,8 @@ let package = Package(
         .executableTarget(
             name: "TokenWatcher",
             dependencies: ["TokenWatcherCore"],
-            path: "Sources/TokenWatcher"
+            path: "Sources/TokenWatcher",
+            linkerSettings: [.linkedFramework("CoreServices")]
         ),
         .testTarget(
             name: "TokenWatcherTests",

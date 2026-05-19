@@ -14,11 +14,15 @@ final class UsageStore: ObservableObject {
 
     private(set) var rawEntries: [String: [UsageEntry]] = [:]
     private var timer: Timer?
+    private var fsWatcher: FSEventWatcher?
     private let settings = AppSettings.shared
 
     private init() {
         setupTimer()
-        Task { await refresh() }
+        Task {
+            await refresh()
+            startFSWatcher()
+        }
 
         NotificationCenter.default.addObserver(
             forName: .settingsDidChange,
@@ -39,6 +43,48 @@ final class UsageStore: ObservableObject {
                 await self?.refresh()
             }
         }
+    }
+
+    @MainActor
+    private func startFSWatcher() {
+        let watcher = FSEventWatcher { [weak self] urls in
+            Task { @MainActor [weak self] in
+                await self?.handleChangedFiles(urls)
+            }
+        }
+        watcher.start(watching: UsageParser.projectsURL)
+        fsWatcher = watcher
+    }
+
+    @MainActor
+    func handleChangedFiles(_ urls: [URL]) async {
+        guard !isLoading else { return }
+        let affectedProjectIds = Set(urls.map { $0.deletingLastPathComponent().lastPathComponent })
+
+        let updated = await Task.detached(priority: .utility) {
+            var result: [String: [UsageEntry]] = [:]
+            for projectId in affectedProjectIds {
+                let dir = UsageParser.projectsURL.appendingPathComponent(projectId)
+                let entries = await UsageParser.parseProject(at: dir)
+                result[projectId] = entries
+            }
+            await FileCache.shared.persist()
+            return result
+        }.value
+
+        for (projectId, entries) in updated {
+            if entries.isEmpty {
+                rawEntries.removeValue(forKey: projectId)
+            } else {
+                rawEntries[projectId] = entries
+            }
+        }
+
+        let computed = buildProjectUsages(from: rawEntries)
+        projects = computed.sorted { $0.todayUsage.totalTokens > $1.todayUsage.totalTokens }
+        totalUsage = projects.reduce(TokenUsage()) { $0 + $1.todayUsage }
+        lastUpdated = Date()
+        AlertsManager.shared.checkAlerts(projects: projects)
     }
 
     func refresh() async {

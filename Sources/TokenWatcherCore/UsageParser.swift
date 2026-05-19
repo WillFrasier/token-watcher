@@ -16,32 +16,90 @@ public enum UsageParser {
             (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
         }
 
-        return try await withThrowingTaskGroup(of: (String, [UsageEntry]).self) { group in
-            for projectDir in projectDirs {
+        let result = try await withThrowingTaskGroup(of: (String, [UsageEntry]).self) { group in
+            for dir in projectDirs {
                 group.addTask {
-                    let id = projectDir.lastPathComponent
-                    let entries = await parseProject(at: projectDir)
+                    let id = dir.lastPathComponent
+                    let entries = await parseProject(at: dir)
                     return (id, entries)
                 }
             }
-            var result: [String: [UsageEntry]] = [:]
+            var r: [String: [UsageEntry]] = [:]
             for try await (id, entries) in group where !entries.isEmpty {
-                result[id] = entries
+                r[id] = entries
             }
-            return result
+            return r
         }
+
+        await FileCache.shared.persist()
+        return result
     }
 
-    private static func parseProject(at dir: URL) async -> [UsageEntry] {
+    public static func parseProject(at dir: URL, cache: FileCache = FileCache.shared) async -> [UsageEntry] {
         let fm = FileManager.default
-        let jsonlFiles = (try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil))
-            .map { $0.filter { $0.pathExtension == "jsonl" } } ?? []
+        let files = (try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.fileSizeKey]))?
+            .filter { $0.pathExtension == "jsonl" } ?? []
 
-        var entries: [UsageEntry] = []
-        for file in jsonlFiles {
-            entries.append(contentsOf: parseJSONL(at: file))
+        var allEntries: [UsageEntry] = []
+        for file in files {
+            allEntries.append(contentsOf: await loadFile(at: file, cache: cache))
         }
+        return allEntries
+    }
+
+    // Cache-aware file loader. Returns cached entries for unchanged files,
+    // reads only new bytes for appended files, full-parses new/replaced files.
+    static func loadFile(at url: URL, cache: FileCache = FileCache.shared) async -> [UsageEntry] {
+        // FileManager avoids the URL resource-value cache, which can return stale file sizes
+        // within a single process lifetime after the file has been written to.
+        let fileSize = ((try? FileManager.default.attributesOfItem(atPath: url.path))?[.size] as? Int) ?? 0
+        let cached = await cache.entry(for: url)
+
+        if let cached {
+            if fileSize == cached.byteOffset {
+                return cached.entries
+            } else if fileSize > cached.byteOffset {
+                if let chunk = readChunk(from: url, offset: cached.byteOffset) {
+                    let newEntries = parseLines(chunk)
+                    var entries = cached.entries
+                    var dedup = cached.dedupIndex
+                    merge(into: &entries, dedupIndex: &dedup, new: newEntries)
+                    await cache.set(
+                        FileCacheEntry(byteOffset: fileSize, entries: entries, dedupIndex: dedup),
+                        for: url
+                    )
+                    return entries
+                }
+            }
+            // fileSize < cached.byteOffset → file was replaced/truncated, fall through to full parse
+        }
+
+        guard let content = try? String(contentsOf: url, encoding: .utf8) else { return [] }
+        let (entries, dedup) = parseLinesDetailed(content)
+        await cache.set(
+            FileCacheEntry(byteOffset: fileSize, entries: entries, dedupIndex: dedup),
+            for: url
+        )
         return entries
+    }
+
+    private static func readChunk(from url: URL, offset: Int) -> String? {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
+        defer { try? handle.close() }
+        try? handle.seek(toOffset: UInt64(offset))
+        let data = handle.readDataToEndOfFile()
+        return String(data: data, encoding: .utf8)
+    }
+
+    private static func merge(into entries: inout [UsageEntry], dedupIndex: inout [String: Int], new: [UsageEntry]) {
+        for entry in new {
+            if !entry.dedupKey.isEmpty, let idx = dedupIndex[entry.dedupKey] {
+                entries[idx] = entry
+            } else {
+                if !entry.dedupKey.isEmpty { dedupIndex[entry.dedupKey] = entries.count }
+                entries.append(entry)
+            }
+        }
     }
 
     public static func parseJSONL(at url: URL) -> [UsageEntry] {
@@ -50,12 +108,14 @@ public enum UsageParser {
     }
 
     public static func parseLines(_ content: String) -> [UsageEntry] {
+        parseLinesDetailed(content).0
+    }
+
+    private static func parseLinesDetailed(_ content: String) -> ([UsageEntry], [String: Int]) {
         let dateFormatter = ISO8601DateFormatter()
         dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         let dateFormatterBasic = ISO8601DateFormatter()
 
-        // Last-wins: streaming writes the same msgId:requestId multiple times with
-        // growing token counts. Map key → index so later snapshots overwrite earlier ones.
         var dedupIndex: [String: Int] = [:]
         var entries: [UsageEntry] = []
 
@@ -94,7 +154,8 @@ public enum UsageParser {
                 isSidechain: json["isSidechain"] as? Bool ?? false,
                 cwd: json["cwd"] as? String,
                 gitBranch: json["gitBranch"] as? String,
-                speed: usage["speed"] as? String ?? "standard"
+                speed: usage["speed"] as? String ?? "standard",
+                dedupKey: dedupKey
             )
 
             if !dedupKey.isEmpty, let existing = dedupIndex[dedupKey] {
@@ -104,6 +165,6 @@ public enum UsageParser {
                 entries.append(entry)
             }
         }
-        return entries
+        return (entries, dedupIndex)
     }
 }
