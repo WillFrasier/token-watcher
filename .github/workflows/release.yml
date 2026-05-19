@@ -1,0 +1,45 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: macos-14
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Swift version
+        run: swift --version
+
+      - name: Test
+        run: swift test
+
+      - name: Build app bundle
+        run: bash scripts/build-app.sh
+
+      - name: Zip
+        run: cd dist && zip -r TokenWatcher.zip "TokenWatcher.app"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/TokenWatcher.zip
+          generate_release_notes: true
+          body: |
+            ## Install
+
+            1. Download `TokenWatcher.zip` and unzip it
+            2. Move `TokenWatcher.app` to `/Applications`
+            3. First launch: **right-click → Open** (bypasses Gatekeeper for unsigned builds)
+
+            Or remove the quarantine flag after unzipping:
+            ```
+            xattr -dr com.apple.quarantine TokenWatcher.app
+            ```
+
+            **Requires macOS 13 (Ventura) or later.**
